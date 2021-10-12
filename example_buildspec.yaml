@@ -1,17 +1,17 @@
 build:
   # meta information
-  doc: development build
-  name: App Name
-  vstring: 1.2.0-keklol
+  doc: "development build"
+  name: "App Name"
+  vstring: "1.2.0-keklol"
   # directory to take as root (all paths assumed relative to it, unless absolute)
   root: .
   # where to put the assembled build (single destination)
-  target: build/dist/latest
+  target: build/dist/dev
 
 include:
   # put specified file / CONTENTS of specified folder (key) into
   # destination folder (value); if file, filename is preserved
-  src: .
+  src: "."
   changelog.txt: doc
 #  doc/software/requirements.txt: doc
 #  doc/software/visa_shell.md: eyp/hardware
@@ -19,28 +19,19 @@ include:
 exclude:
   # see shutil.copytree documentation
   patterns:
-    - *.pyc
+    - "*.pyc"
     - placeholder
-    - __pycache__
-    - *.pyproject
-    - *.pyproject.user
-    - *.ui
+    - "__pycache__"
+    - "*.pyproject"
+    - "*.pyproject.user"
+    - "*.ui"
   # specific files to exclude from e.g. diretories specified in include
   specific:
-    - src/build.py
+    - "src/build.py"
 
 qt:
   # CLI command to use
-  compiler: pyside6-uic
+  compiler: "pyside6-uic"
   # files to compile. For consistency, e.g. popup.ui --> popup_ui.py
   forms:
-    - src/eyp/gui/forms/popup.ui
-
-# proprietary extension, ignore.
-eyp-cf:
-  build: /fuedb/software/dist/eyp-cf/latest
-  packages:
-    - core
-    - hardware
-    - measurement
-    - qt
+    - "src/eyp/gui/forms/popup.ui"

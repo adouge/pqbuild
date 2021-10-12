@@ -78,7 +78,8 @@ class Builder(object):
         except KeyError:
             patterns = list()
         self._shutil_ignore = sh.ignore_patterns(*patterns)
-        print("Excluding patterns: %s" % ", ".join(patterns))
+        if len(patterns) > 0:
+            print("Excluding patterns: %s" % ", ".join(patterns))
         # parse specific exclusions:
         self._excluded_folders = list()
         self._excluded_files = dict()
@@ -86,7 +87,8 @@ class Builder(object):
             specific = self.spec["exclude"]["specific"]
         except KeyError:
             specific = list()
-        print("Excluding specific: %s" % "\n\t".join(specific))
+        if len(specific) > 0:
+            print("Excluding specific: %s" % "\n\t".join(specific))
         for path in specific:
             if os.path.isdir(path):
                 self._excluded_folders.append(path)
@@ -188,8 +190,8 @@ class Builder(object):
         sh.rmtree("__TMP__")
 
 
-# direct call on file
-if __name__ == '__main__':
+def main(builder_class=Builder):
+    """Call when executing as script."""
     N = len(sys.argv) - 1
     if N == 0:
         print("No buildspec file specified!")
@@ -200,4 +202,8 @@ if __name__ == '__main__':
         for arg in sys.argv:
             echo += "%s " % str(arg)
         print("Didn't understand buildspec: %s" % echo)
-    Builder().build(specfile)
+    builder_class().build(specfile)
+
+
+if __name__ == '__main__':
+    main()
