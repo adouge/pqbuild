@@ -19,8 +19,8 @@ import shutil as sh
 import os
 import sys
 
-pybuild_vstring = "1.0.0-rc1"
-_uic_check_command = "-- version"
+pqbuild_vstring = "1.0.0-rc1"
+_uic_check_command = "--version"
 _errmsg_source_does_not_exist = "[WARN] Source does not exist: \n\t%s"
 _errmsg_ui_compiler_not_available = "[WARN] Compiler %s not found; skipping."
 _errmsg_no_ui_forms_specified = "No UI forms specified."
@@ -44,7 +44,7 @@ class Builder(object):
         if dir in self._excluded_folders:
             exclude = set([*base, *names])
         elif dir in self._excluded_files.keys():
-            extra = [name for name in names if name in self._excluded[dir]]
+            extra = [name for name in names if name in self._excluded_files[dir]]
             exclude = set([*base, *extra])
         else:
             exclude = base
@@ -53,6 +53,7 @@ class Builder(object):
     def parse_buildspec(self, specfile):
         """Parse specfile and initialize the Builder."""
         # load specfile
+        print("pqbuild v. %s" % pqbuild_vstring)
         if not os.path.isfile(specfile):
             raise FileNotFoundError("Specfile not found: %s" % specfile)
         else:
@@ -64,8 +65,11 @@ class Builder(object):
             self.spec["build"]["vstring"]))
         # move to build root
         print("Build root: %s" % self.spec["build"]["root"])
-        os.chroot(self.spec["build"]["root"])
+        os.chdir(self.spec["build"]["root"])
         # make tmp dir
+        if os.path.isdir("__TMP__"):
+            print("[WARN] TMP directory exists!")
+            self.clean()
         os.mkdir("__TMP__")
         # === parse excludes
         # make shutil pattern ignorer
@@ -73,7 +77,7 @@ class Builder(object):
             patterns = self.spec["exclude"]["patterns"]
         except KeyError:
             patterns = list()
-        self._shutil_ignore = sh.ignore_patterns(patterns)
+        self._shutil_ignore = sh.ignore_patterns(*patterns)
         print("Excluding patterns: %s" % ", ".join(patterns))
         # parse specific exclusions:
         self._excluded_folders = list()
@@ -117,7 +121,6 @@ class Builder(object):
             check = os.system("%s %s" % (
                 qt["compiler"], _uic_check_command)) == 0
             if check:
-                print("Compiling Qt forms.")
                 for form in forms:
                     self._compile_form(form)
             else:
@@ -134,13 +137,15 @@ class Builder(object):
             raise Exception("No includes specified!")
         # otherwise
         for source in include.keys():
-            target = include[source]
+            target = os.path.join("__TMP__", include[source])
             if os.path.exists(source):
-                print("Source: %s/ --> %s/" % (source, target))
+                print("Source: %s/ --> %s/" % (source, include[source]))
                 if os.path.isdir(source):
                     sh.copytree(
-                        source, target,
-                        ignore=self._excluder, dirs_exist_ok=True,
+                        source,
+                        target,
+                        ignore=self._excluder,
+                        dirs_exist_ok=True,
                         copy_function=sh.copy)
                 else:
                     if not os.path.isdir(target):
