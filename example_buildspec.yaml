@@ -1,22 +1,20 @@
 build:
-  # meta
+  # meta information
   doc: development build
   name: App Name
   vstring: 1.2.0-keklol
-  # directory to take as root (paths relative to it)
+  # directory to take as root (all paths assumed relative to it, unless absolute)
   root: .
-  # where to put the assembled build
-  destination: build/dist/latest
+  # where to put the assembled build (single destination)
+  target: build/dist/latest
 
 include:
-  # put contents of folder (key) into destination folder (value)
-  folders:
-    src: .
-  # put file (key) into destination folder (value); filename is preserved
-  files:
-    changelog.txt: doc
-#    doc/software/requirements.txt: doc
-#    doc/software/visa_shell.md: eyp/hardware
+  # put specified file / CONTENTS of specified folder (key) into
+  # destination folder (value); if file, filename is preserved
+  src: .
+  changelog.txt: doc
+#  doc/software/requirements.txt: doc
+#  doc/software/visa_shell.md: eyp/hardware
 
 exclude:
   # see shutil.copytree documentation
@@ -27,6 +25,7 @@ exclude:
     - *.pyproject
     - *.pyproject.user
     - *.ui
+  # specific files to exclude from e.g. diretories specified in include
   specific:
     - src/build.py
 
