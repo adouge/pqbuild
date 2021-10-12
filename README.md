@@ -4,3 +4,6 @@ Small build script for "building" Python apps. Originally used in the Python/Qt 
 See sample buildspec file / main class docstring for info.
 
 Requires PyYAML.
+
+---
+TODO: documentation
