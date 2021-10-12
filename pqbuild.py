@@ -19,7 +19,7 @@ import shutil as sh
 import os
 import sys
 
-pqbuild_vstring = "1.0.0-rc1"
+pqbuild_vstring = "1.0.0"
 _uic_check_command = "--version"
 _errmsg_source_does_not_exist = "[WARN] Source does not exist: \n\t%s"
 _errmsg_ui_compiler_not_available = "[WARN] Compiler %s not found; skipping."
