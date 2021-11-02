@@ -5,8 +5,10 @@ build:
   vstring: "1.2.0-keklol"
   # directory to take as root (all paths assumed relative to it, unless absolute)
   root: .
-  # where to put the assembled build (single destination)
-  target: build/dist/dev
+  # where to put the assembled build
+  target:
+    - build/dist/dev
+    - build/dist/archive/1.2.0
 
 include:
   # put specified file / CONTENTS of specified folder (key) into

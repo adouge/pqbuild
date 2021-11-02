@@ -19,7 +19,7 @@ import shutil as sh
 import os
 import sys
 
-pqbuild_vstring = "1.0.0"
+pqbuild_vstring = "1.1.0"
 _uic_check_command = "--version"
 _errmsg_source_does_not_exist = "[WARN] Source does not exist: \n\t%s"
 _errmsg_ui_compiler_not_available = "[WARN] Compiler %s not found; skipping."
@@ -160,17 +160,26 @@ class Builder(object):
     def ship(self):
         """Ship the build to target."""
         print("------")
-        target = self.spec["build"]["target"]
-        # if target exists, clean
-        if os.path.isdir(target):
-            print("Target exists, cleaning...")
-            sh.rmtree(target)
-        # makedirs as needed
-        os.makedirs(target, exist_ok=True)
-        sh.copytree(
-            "__TMP__", target,
-            dirs_exist_ok=True, copy_function=sh.copy)
-        print("Shipped to: %s" % target)
+        targets = self.spec["build"]["target"]
+        if isinstance(targets, list):
+            pass
+        else:
+            targets = [targets]
+
+        def ship_to(target):
+            # if target exists, clean
+            if os.path.isdir(target):
+                print("Target exists, cleaning...")
+                sh.rmtree(target)
+            # makedirs as needed
+            os.makedirs(target, exist_ok=True)
+            sh.copytree(
+                "__TMP__", target,
+                dirs_exist_ok=True, copy_function=sh.copy)
+            print("Shipped to: %s" % target)
+
+        for target in targets:
+            ship_to(target)
 
     def build(self, specfile, clean=True):
         """Build."""
