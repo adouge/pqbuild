@@ -27,10 +27,12 @@ _errmsg_no_ui_forms_specified = "No UI forms specified."
 
 
 def copytree_ignore(ignore_patterns=[], ignore_specific=[]):
-    """Make a copytree compatible ignore method.
+    """Make a copytree-compatible ignore method.
 
-    Different from shutil.copytree compatible ignore callables
-    in that it can also indicate that the entire directory is to be omitted.
+    Takes a list of glob-type patterns (handled using shutil.ignore_patterns)
+    and a list of paths (absolute, or relative to "root" from which copytree
+    will be called) - both whole directories and specific files - to be ignored
+    during copying.
     """
     get_ignored_by_pattern = shutil.ignore_patterns(*ignore_patterns)
     abs_ignore_list = [os.path.abspath(item) for item in ignore_specific]
@@ -45,7 +47,7 @@ def copytree_ignore(ignore_patterns=[], ignore_specific=[]):
     return get_ignored
 
 
-def copytree(src, dst, ignore=None, exist_ok=True):
+def copytree(src, dst, ignore=None, dirs_exist_ok=True):
     """Copy directory tree from "src" to "dst".
 
     Works as (bash) "cp -r src/* dst/".
@@ -55,9 +57,16 @@ def copytree(src, dst, ignore=None, exist_ok=True):
             directory to copy from
         dst:
             directory to copy to
+        ignore:
+            callable to determine which files to ignore.
+            Must take a directory path + list of files in that directory,
+            and return a set of filenames (dirnames) to ignore.
+        dirs_exist_ok (bool):
+            passed to os.makedirs; whether already existing folders
+            in destination tree should be "tolerated". Defaults to yes.
     """
     names = os.listdir(src)
-    os.makedirs(dst, exist_ok=exist_ok)
+    os.makedirs(dst, exist_ok=dirs_exist_ok)
     if ignore is None:
         ignored = set()
     else:
@@ -68,7 +77,7 @@ def copytree(src, dst, ignore=None, exist_ok=True):
         if name in ignored:
             continue
         elif os.path.isdir(srcname):
-            copytree(srcname, dstname, ignore=ignore, exist_ok=exist_ok)
+            copytree(srcname, dstname, ignore=ignore, exist_ok=dirs_exist_ok)
         else:
             shutil.copy2(srcname, dstname)
 
