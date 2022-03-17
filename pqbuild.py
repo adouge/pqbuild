@@ -15,15 +15,62 @@
 """PyBuild: a build script for the Python/Qt (PySide6) stack."""
 
 import yaml
-import shutil as sh
+import shutil
 import os
 import sys
 
-pqbuild_vstring = "1.1.0"
+pqbuild_vstring = "1.2.0"
 _uic_check_command = "--version"
 _errmsg_source_does_not_exist = "[WARN] Source does not exist: \n\t%s"
 _errmsg_ui_compiler_not_available = "[WARN] Compiler %s not found; skipping."
 _errmsg_no_ui_forms_specified = "No UI forms specified."
+
+
+def copytree_ignore(ignore_patterns=[], ignore_specific=[]):
+    """Make a copytree compatible ignore method.
+
+    Different from shutil.copytree compatible ignore callables
+    in that it can also indicate that the entire directory is to be omitted.
+    """
+    get_ignored_by_pattern = shutil.ignore_patterns(*ignore_patterns)
+    abs_ignore_list = [os.path.abspath(item) for item in ignore_specific]
+
+    def get_ignored(path, names):
+        ignored = get_ignored_by_pattern(path, names)
+        for name in names:
+            if os.path.abspath(os.path.join(path, name)) in abs_ignore_list:
+                ignored.add(name)
+        return ignored
+
+    return get_ignored
+
+
+def copytree(src, dst, ignore=None, exist_ok=True):
+    """Copy directory tree from "src" to "dst".
+
+    Works as (bash) "cp -r src/* dst/".
+
+    Parameters:
+        src:
+            directory to copy from
+        dst:
+            directory to copy to
+    """
+    names = os.listdir(src)
+    os.makedirs(dst, exist_ok=exist_ok)
+    if ignore is None:
+        ignored = set()
+    else:
+        ignored = ignore(src, names)
+    for name in names:
+        srcname = os.path.join(src, name)
+        dstname = os.path.join(dst, name)
+        if name in ignored:
+            continue
+        elif os.path.isdir(srcname):
+            copytree(srcname, dstname, ignore=ignore, exist_ok=exist_ok)
+        else:
+            shutil.copy2(srcname, dstname)
 
 
 class Builder(object):
@@ -32,23 +79,6 @@ class Builder(object):
     Either call python pybuild.py path/to/buildspec.yaml
     or use Builder().run("path/to/buildspec.yaml").
     """
-
-    def _excluder(self, dir, names):
-        """Ignore method for shutil.copytree().
-
-        Extended to accomodate for specific file/folder exclusion.
-        """
-        # Get list of files to be ignored by pattern rules:
-        base = self._shutil_ignore(dir, names)
-        # Append specific exclusion files, if any are in the current directory:
-        if dir in self._excluded_folders:
-            exclude = set([*base, *names])
-        elif dir in self._excluded_files.keys():
-            extra = [name for name in names if name in self._excluded_files[dir]]
-            exclude = set([*base, *extra])
-        else:
-            exclude = base
-        return exclude
 
     def parse_buildspec(self, specfile):
         """Parse specfile and initialize the Builder."""
@@ -71,42 +101,31 @@ class Builder(object):
             print("[WARN] TMP directory exists!")
             self.clean()
         os.mkdir("__TMP__")
-        # === parse excludes
-        # make shutil pattern ignorer
+        # parse excludes - patterns
         try:
             patterns = self.spec["exclude"]["patterns"]
         except KeyError:
             patterns = list()
-        self._shutil_ignore = sh.ignore_patterns(*patterns)
         if len(patterns) > 0:
             print("Excluding patterns: %s" % ", ".join(patterns))
-        # parse specific exclusions:
-        self._excluded_folders = list()
-        self._excluded_files = dict()
+        # parse excludes - specific:
         try:
             specific = self.spec["exclude"]["specific"]
         except KeyError:
             specific = list()
         if len(specific) > 0:
-            print("Excluding specific: %s" % "\n\t".join(specific))
-        for path in specific:
-            if os.path.isdir(path):
-                self._excluded_folders.append(path)
-            else:
-                dir, filename = os.path.split(path)
-                try:
-                    self._excluded_files[dir]
-                except KeyError:
-                    self._excluded_files[dir] = set()
-                self._excluded_files[dir].add(filename)
+            print("Excluding specific:\n\t%s" % "\n\t".join(specific))
+        # make excluder
+        self.copytree_excluder = copytree_ignore(
+            ignore_patterns=patterns,
+            ignore_specific=specific)
 
-    def _compile_form(self, form, outfile=None):
+    def compile_qt_form(self, form, outfile=None):
         """Compile a Qt .ui file "form", optionally to output file "outfile"."""
         if outfile is not None:
             out = outfile
         else:
             out = "%s_ui.py" % form.split(".ui")[0]
-        print("Compiling form: %s --> %s" % (form, out))
         cmd = "%s -g python -o %s %s" % (
             self.spec["qt"]["compiler"], out, form)
         os.system(cmd)
@@ -124,7 +143,9 @@ class Builder(object):
                 qt["compiler"], _uic_check_command)) == 0
             if check:
                 for form in forms:
-                    self._compile_form(form)
+                    out = "%s_ui.py" % form.split(".ui")[0]
+                    print("Compiling form: %s --> %s" % (form, out))
+                    self.compile_qt_form(form, outfile=out)
             else:
                 print(_errmsg_ui_compiler_not_available % qt["compiler"])
 
@@ -143,17 +164,12 @@ class Builder(object):
             if os.path.exists(source):
                 print("Source: %s/ --> %s/" % (source, include[source]))
                 if os.path.isdir(source):
-                    sh.copytree(
-                        source,
-                        target,
-                        ignore=self._excluder,
-                        dirs_exist_ok=True,
-                        copy_function=sh.copy)
+                    copytree(source, target, ignore=self.copytree_excluder)
                 else:
                     if not os.path.isdir(target):
-                        print("\tTarget directory does not exist; creating.")
+                        print("\tTarget directory does not exist, creating.")
                         os.mkdir(target)
-                    sh.copy(source, target)
+                    shutil.copy2(source, target)
             else:
                 print(_errmsg_source_does_not_exist % source)
 
@@ -170,37 +186,34 @@ class Builder(object):
             # if target exists, clean
             if os.path.isdir(target):
                 print("Target exists, cleaning...")
-                sh.rmtree(target)
+                shutil.rmtree(target)
             # makedirs as needed
-            os.makedirs(target, exist_ok=True)
-            sh.copytree(
-                "__TMP__", target,
-                dirs_exist_ok=True, copy_function=sh.copy)
+            shutil.copytree("__TMP__", target)
             print("Shipped to: %s" % target)
 
         for target in targets:
             ship_to(target)
 
-    def build(self, specfile, clean=True):
+    def build(self, specfile):
         """Build."""
         self.parse_buildspec(specfile)
         self.compile_qt_forms()
         self.assemble()
         self.ship()
-        if clean:
-            self.clean()
-        else:
-            print("[WARN] Requested to not clean build directory (__TMP__).")
+        self.clean()
         print("======\nDone.")
 
     def clean(self):
         """Do post-build cleanup of tmp directory."""
         print("Cleaning tmp build directory...")
-        sh.rmtree("__TMP__")
+        shutil.rmtree("__TMP__")
 
 
-def main(builder_class=Builder):
-    """Call when executing as script."""
+def run(builder_class=Builder):
+    """Execute build.
+
+    Optionally specify a different builder class, e.g., to add extra steps.
+    """
     N = len(sys.argv) - 1
     if N == 0:
         print("No buildspec file specified!")
@@ -215,4 +228,4 @@ def main(builder_class=Builder):
 
 
 if __name__ == '__main__':
-    main()
+    run()

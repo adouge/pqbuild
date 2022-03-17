@@ -1,3 +1,11 @@
+1.2.0 - 17.03.2022:
+  - Rewrote using a "homemade" shutil.copytree variant to:
+    a) properly handle excluding whole folders
+    b) make the script usable on Python 3.7, where shutil.copytree doesn't
+    have the dirs_exist_ok parameter.
+  - renamed pqbuild.main call method to pqbuild.run
+  - dropped redundant/unused "clean" option in Builder.build()
+
 1.1.0 - 02.11.2021:
   - Added ability to define multiple build targets
 

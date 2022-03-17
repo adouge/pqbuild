@@ -30,6 +30,7 @@ exclude:
   # specific files to exclude from e.g. diretories specified in include
   specific:
     - "src/build.py"
+    - "src/some_dir"
 
 qt:
   # CLI command to use
