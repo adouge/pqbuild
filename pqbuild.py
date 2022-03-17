@@ -77,7 +77,9 @@ def copytree(src, dst, ignore=None, dirs_exist_ok=True):
         if name in ignored:
             continue
         elif os.path.isdir(srcname):
-            copytree(srcname, dstname, ignore=ignore, exist_ok=dirs_exist_ok)
+            copytree(
+                srcname, dstname,
+                ignore=ignore, dirs_exist_ok=dirs_exist_ok)
         else:
             shutil.copy2(srcname, dstname)
 
